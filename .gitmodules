@@ -1,0 +1,6 @@
+[submodule "PySchedules"]
+	path = PySchedules
+	url = ./PySchedules/
+[submodule "vlc-python"]
+	path = vlc-python
+	url = ./vlc-python/
