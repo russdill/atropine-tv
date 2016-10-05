@@ -1,7 +1,13 @@
 from PyQt4 import Qt
 import collections
 
+# This work is licensed under the Creative Commons Attribution 3.0 United
+# States License. In short: you are free to distribute and modify the file
+# as long as you attribute its author(s) or licensor(s).
+#
 # Font generated from http://www.fontsaddict.com
+# Television screen with antenna by Freepik
+
 television_screen_with_antenna = """<?xml version="1.0" encoding="iso-8859-1"?>
 <!-- Generator: Adobe Illustrator 16.0.4, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
