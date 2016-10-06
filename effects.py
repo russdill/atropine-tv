@@ -17,7 +17,7 @@ from PyQt4 import Qt
 import ctypes
 import sip
 
-_qtgui = ctypes.CDLL("libQtGui.so")
+_qtgui = ctypes.CDLL("libQtGui.so.4")
 _qt_blurImage = _qtgui._Z12qt_blurImageP8QPainterR6QImagedbbi
 
 def qt_blurImage(p, blurImage, radius, quality, alphaOnly, transposed=0):
