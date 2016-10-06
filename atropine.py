@@ -29,6 +29,7 @@ import xdg.BaseDirectory
 import categories
 import json
 import os
+import atomicwrites
 
 import video_vlc
 import source_hdhr
@@ -165,7 +166,7 @@ class atropine(Qt.QStackedWidget):
 
         if vchannel:
             try:
-                with open(self.channel_file, 'w') as f:
+                with atomicwrites.atomic_write(self.channel_file, overwrite=True) as f:
                     f.write(self.vchannel)
             except:
                 pass

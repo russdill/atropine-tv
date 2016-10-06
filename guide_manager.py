@@ -24,6 +24,7 @@ import StringIO
 
 import datetime
 import dateutil.tz
+import atomicwrites
 
 from PyQt4 import Qt
 
@@ -52,7 +53,7 @@ class parse_worker(Qt.QThread):
             if not self.initial:
                 tmp.seek(0)
                 try:
-                    with open(self.filename, 'w') as out:
+                    with atomicwrites.atomic_write(self.filename, overwrite=True) as out:
                         shutil.copyfileobj(tmp, out)
                 except:
                     pass
