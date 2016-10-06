@@ -80,7 +80,7 @@ class match_worker(Qt.QThread):
 class lyngsat_region(Qt.QNetworkAccessManager):
     updated = Qt.pyqtSignal()
 
-    cache_period_sec = 30 * 24 * 60 * 60
+    cache_period_sec = 20 * 24 * 60 * 60
     retry_delay_sec = 60 * 60
 
     def __init__(self, region, cache_dir):
