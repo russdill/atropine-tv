@@ -22,6 +22,7 @@ import live
 import guide
 import guide_manager
 import icon_manager
+import callsign_manager
 import configargparse
 import collections
 import xdg.BaseDirectory
@@ -52,8 +53,10 @@ class atropine(Qt.QStackedWidget):
         self.fullscreen = options.fullscreen
 
         gm = guide_manager.guide_manager(self, options)
-        im = icon_manager.icon_manager(options)
+        cm = callsign_manager.callsign_manager(self, options)
+        im = icon_manager.icon_manager(cm, options)
 
+	gm.new_guide.connect(cm.new_guide)
         gm.new_guide.connect(self.guide_update)
 
         self.vchannel = None
@@ -226,8 +229,6 @@ if __name__ == '__main__':
                help='Schedules Direct password')
     parser.add('-l', '--lineup-id', type=str,
                help='Schedules Direct lineup ID')
-    parser.add('-m', '--iconmap', type=str, default=iconmap,
-               help='XML callsign/icon map')
     parser.add('-s', '--sched', type=str, default=sched,
                help='Cached scheduler data')
     parser.add('-i', '--icons', type=str, default=cache,
@@ -244,8 +245,13 @@ if __name__ == '__main__':
                help='Python re.sub actions for channel names in icon search')
     parser.add('--channel-drop', type=json.loads,
                help='Droppable tokens for channel names in icon search')
+    parser.add('--channel-region', type=str, action='append',
+               help='LyngSat Logo region (can be specified multiple times)')
 
     options = parser.parse_args()
+
+    if options.channel_region is None:
+        options.channel_region = ['us']
 
     Qt.QCoreApplication.setAttribute(Qt.Qt.AA_X11InitThreads)
 

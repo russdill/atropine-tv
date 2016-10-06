@@ -18,140 +18,211 @@ import datetime
 import os
 import sys
 import time
+import atomicwrites
+
 from PyQt4 import Qt
 
+class callsign(Qt.QObject):
+    no_url = 0
+    idle = 1
+    waiting = 2
+    ready = 3
+
+    url_hires = 0
+    url_sd = 1
+    url_none = 2
+
+    def __init__(self, callsign_name, callsign_manager, icon_manager):
+        super(callsign, self).__init__()
+        self.callsign = callsign_name
+        self.labels = []
+        self.url = None
+        self.state = self.no_url
+        self.url_state = self.url_none
+        self.icon_name = None
+        self.retry_timer = Qt.QTimer()
+        self.retry_timer.setSingleShot(True)
+        self.retry_timer.timeout.connect(self.retry)
+        self.use_cache = True
+        self.pixmap = None
+
+        self.cm = callsign_manager
+        self.im = icon_manager
+        self.cm.updated.connect(self.cm_updated)
+        self.cm_updated()
+
+    def cm_updated(self):
+        url = None
+        try:
+            url = self.cm.lookup_url(self.callsign)
+        except Exception as e:
+            url = None
+
+        if url is None:
+            self.url = None
+            self.icon_name = None
+            self.state = self.no_url
+            self.pixmap = None
+            for label in self.labels:
+                label.clear()
+            self.im.cancel(self)
+        elif self.url != url:
+            self.url = url;
+            self.icon_name = os.path.basename(url)
+            self.state = self.waiting
+            self.url_state = self.url_hires
+            self.use_cache = True
+            self.im.enqueue(self)
+        else:
+            return
+
+    def next_url(self):
+        if self.url_state == self.url_hires:
+            self.url_state = self.url_sd
+            return self.url.replace('logo/tv', 'hires')
+        elif self.url_state == self.url_sd:
+            self.url_state = self.url_none
+            return self.url
+        return None
+
+    def add_label(self, label):
+        self.labels.append(label)
+        self.im.prioritize(self)
+        if self.pixmap is None:
+            label.clear()
+        else:
+            label.setPixmap(self.pixmap)
+
+    def retry(self):
+        if self.state == self.ready:
+            self.url_state = self.url_hires
+            self.state = self.waiting
+            self.im.enqueue(self)
+
+    def loaded(self, pixmap, age):
+        if pixmap is None:
+            # Retry in 30 minutes
+            delta = 30 * 60
+        else:
+            self.pixmap = pixmap
+            for label in self.labels:
+                label.setPixmap(self.pixmap)
+
+            # Try to get a new copy every 20 days
+            self.use_cache = False
+            delta = 60 * 60 * 24 * 20 - age
+            if delta < 0:
+                delta = 0;
+
+        self.retry_timer.start(delta * 1000)
+        self.state = self.ready
+
+    def del_label(self, label):
+        self.labels.remove(label)
+
 class icon_manager(Qt.QNetworkAccessManager):
-    def __init__(self, options):
+    def __init__(self, callsign_manager, options):
         super(icon_manager, self).__init__()
-        self.iconmap = icons.channel_icons(options.iconmap)
+        self.cm = callsign_manager
         self.finished.connect(self.xfer_finished)
         self.path = options.icons
 
         self.queue = []
-        self.cache = dict()
         self.callsigns = dict()
         self.labels = dict()
         self.running = None
-        self.failed = dict()
 
-    def request(self, callsign, label):
-        try:
-            label.setPixmap(self.cache[callsign])
-        except:
-            pass
-        try:
-            url = self.iconmap.icon_url(callsign)
-        except:
-            return
-        basename = os.path.basename(url)
-        path = os.path.join(self.path, basename);
+    def enqueue(self, callsign):
+        if callsign != self.running:
+            self.queue.insert(0, callsign)
+        self.dequeue()
 
-        pixmap = Qt.QPixmap()
-        if pixmap.load(path):
-            label.setPixmap(pixmap)
-            self.cache[callsign] = pixmap
-            # Check if we should try for a newer one (every 6 weeks)
-            if time.time() - os.path.getmtime(path) < 60 * 60 * 24 * 7 * 6:
-                return
-
-        # LyngSat hack
-        hires = url.replace('logo/tv', 'hires')
-
-        self.enqueue(callsign, [Qt.QUrl(hires), Qt.QUrl(url)], label)
-
-    def enqueue(self, callsign, url, label):
-        if callsign in self.failed:
-            # Retry after 30 minutes
-            if (datetime.datetime.now() - self.failed[callsign]).total_seconds() > 60 * 30:
-                del self.failed[callsign]
-            else:
-                return
-
-        self.callsigns[callsign] = (url, label)
-        if label is not None:
-            self.labels[label] = callsign
-
-        if callsign == self.running:
-            return
-
-        # Move to head
+    def prioritize(self, callsign):
         if callsign in self.queue:
             self.queue.remove(callsign)
-        self.queue.insert(0, callsign)
+            self.queue.insert(0, callsign)
 
-        self.dequeue()
+    def cancel(self, callsign):
+        if callsign in self.queue:
+            self.queue.remove(callsign)
+        if callsign == self.running:
+            self.running = None
+
+    def forget_label(self, label):
+        if label in self.labels:
+            self.labels[label].del_label(label)
+            del self.labels[label]
+
+    def request(self, callsign_name, label):
+        self.forget_label(label)
+
+        if callsign_name in self.callsigns:
+            cs = self.callsigns[callsign_name]
+        else:
+            cs = callsign(callsign_name, self.cm, self)
+            self.callsigns[callsign_name] = cs
+
+        self.labels[label] = cs
+        cs.add_label(label)
 
     def dequeue(self):
         if self.running or not len(self.queue):
             return
 
-        callsign = self.queue.pop()
-        self.running = callsign
-        self.remaining_urls = self.callsigns[callsign][0][1:]
+        self.running = self.queue.pop()
+        if self.running.use_cache:
+            self.process()
+        else:
+            self.download()
 
-        self.get(Qt.QNetworkRequest(self.callsigns[callsign][0][0]))
+    def process(self):
+        path = os.path.join(self.path, self.running.icon_name)
 
-    def forget_label(self, label):
-        try:
-            callsign = self.labels.pop(label)
-            url, label = self.callsigns[callsign]
-        except:
-            return
-        self.callsigns[callsign] = (url, None)
+        pixmap = Qt.QPixmap()
+        if pixmap.load(path):
+            # Done with request, success
+            age = time.time() - os.path.getmtime(path)
+            self.running.loaded(pixmap, age)
+            self.running = None
 
-    def forget_labels(self):
-        for label, callsign in self.labels.iteritems():
-            url, label = self.callsigns[callsign]
-            self.callsigns[callsign] = (url, None)
-        self.labels = dict()
+            # Don't recurse
+            Qt.QTimer.singleShot(0, self.dequeue)
+        else:
+            self.download()
 
-    def xfer_finished(self, reply):
-
-        reply.deleteLater()
-        callsign = self.running
-
-        if reply.error() != Qt.QNetworkReply.NoError:
-            if len(self.remaining_urls):
-                self.get(Qt.QNetworkRequest(self.remaining_urls[0]))
-                del self.remaining_urls[0]
-                return
-
-            self.failed[callsign] = datetime.datetime.now()
-            url, label = self.callsigns.pop(callsign)
-            if label is not None:
-                del self.labels[label]
+    def download(self):
+        url = self.running.next_url()
+        if url is not None:
+            url = Qt.QUrl(url)
+            self.get(Qt.QNetworkRequest(url))
+        else:
+            # Done with request, failed
+            self.running.loaded(None, None)
             self.running = None
 
             # Wait a bit between retries
-            Qt.QTimer.singleShot(1000, self.dequeue())
+            Qt.QTimer.singleShot(1000, self.dequeue)
+
+    def xfer_finished(self, reply):
+        reply.deleteLater()
+
+        if self.running is None:
             self.dequeue()
+            return
+
+        if reply.error() != Qt.QNetworkReply.NoError:
+            self.download()
             return
 
         redirect = reply.attribute(Qt.QNetworkRequest.RedirectionTargetAttribute).toUrl()
         if not redirect.isEmpty():
             self.get(Qt.QNetworkRequest(redirect))
+            return
 
-        callsign = self.running
-        url, label = self.callsigns.pop(callsign)
-        if label is not None:
-            del self.labels[label]
-        self.running = None
-
-        basename = os.path.basename(str(url[0].toString()))
+        basename = os.path.basename(self.running.icon_name)
         path = os.path.join(self.path, basename)
-        file = Qt.QFile(path)
-        file.open(Qt.QIODevice.WriteOnly)
-        file.write(reply.readAll())
-        file.close()
+        with atomicwrites.atomic_write(path, overwrite=True) as f:
+            f.write(reply.readAll())
 
-        if label is not None:
-            pixmap = Qt.QPixmap()
-            if pixmap.load(path):
-                label.setPixmap(pixmap)
-                self.cache[callsign] = pixmap
-            else:
-                os.remove(path)
-                self.failed[callsign] = datetime.datetime.now()
-
-        reply.deleteLater()
-        self.dequeue()
+        # Will load pixmap or get next url if file is corrupted
+        self.process()
