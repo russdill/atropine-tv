@@ -40,8 +40,8 @@ from PyQt4 import Qt
 import faulthandler
 faulthandler.enable()
 
-"""
-"""
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 class atropine(Qt.QStackedWidget):
 
@@ -142,7 +142,8 @@ class atropine(Qt.QStackedWidget):
             }
         """
         # https://raw.githubusercontent.com/MythTV/mythtv/master/mythtv/themes/default/categories.xml
-        cc = categories.category_colors('categories.xml')
+        cat_file = os.path.join(__location__, 'categories.xml')
+        cc = categories.category_colors(cat_file)
         for key, value in cc.iteritems():
             ss += 'QLabel[category="%s"] { background-color: rgb%s; }\n' % (key, str(value))
 
