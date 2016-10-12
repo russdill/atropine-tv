@@ -287,9 +287,9 @@ class live(video.video_proxy):
         self.info_widget.new_guide()
 
     def keyPressEvent(self, e):
-        if e.key() == Qt.Qt.Key_Up:
+        if e.key() == Qt.Qt.Key_Up or e.key() == Qt.Qt.Key_PageUp:
             self.vchannel_incdec(1)
-        elif e.key() == Qt.Qt.Key_Down:
+        elif e.key() == Qt.Qt.Key_Down or e.key() == Qt.Qt.Key_PageDown:
             self.vchannel_incdec(-1)
         elif e.key() == Qt.Qt.Key_I:
             self.info_widget.setVisible(not self.info_widget.isVisible())
