@@ -36,6 +36,12 @@ import source_hdhr
 
 from PyQt4 import Qt
 
+# Optional
+try:
+    import lirc_client
+    has_lirc_client = True
+except:
+    has_lirc_client = False
 
 import faulthandler
 faulthandler.enable()
@@ -252,6 +258,9 @@ if __name__ == '__main__':
                help='LyngSat Logo region (can be specified multiple times)')
     parser.add('--no-escape', action='store_true', default=False,
                help='Do not exit Atropine when escape is pressed')
+    if has_lirc_client:
+        parser.add('--lircrc', type=str,
+                   help='lirc keymapping configuration file')
 
     options = parser.parse_args()
 
@@ -269,6 +278,9 @@ if __name__ == '__main__':
         widget.showFullScreen()
     else:
         widget.showNormal()
+
+    if has_lirc_client and options.lircrc:
+        lirc_client.client(widget, 'atropine-tv', options.lircrc)
 
     sys.exit(app.exec_())
 
