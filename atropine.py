@@ -52,6 +52,7 @@ class atropine(Qt.QStackedWidget):
         super(atropine, self).__init__()
         self.vchannels = collections.OrderedDict()
         self.fullscreen = options.fullscreen
+        self.no_escape = options.no_escape
 
         gm = guide_manager.guide_manager(self, options)
         cm = callsign_manager.callsign_manager(self, options)
@@ -201,7 +202,7 @@ class atropine(Qt.QStackedWidget):
             else:
                 self.showFullScreen()
             self.fullscreen = not self.fullscreen
-        elif e.key() == Qt.Qt.Key_Escape:
+        elif e.key() == Qt.Qt.Key_Escape and not options.no_escape:
             Qt.qApp.exit()
         else:
             super(atropine, self).keyPressEvent(e)
@@ -249,6 +250,8 @@ if __name__ == '__main__':
                help='Droppable tokens for channel names in icon search')
     parser.add('--channel-region', type=str, action='append',
                help='LyngSat Logo region (can be specified multiple times)')
+    parser.add('--no-escape', action='store_true', default=False,
+               help='Do not exit Atropine when escape is pressed')
 
     options = parser.parse_args()
 
