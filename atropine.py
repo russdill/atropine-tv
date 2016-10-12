@@ -74,13 +74,16 @@ class atropine(Qt.QStackedWidget):
         self.source = source_hdhr.source_hdhr(self.video)
         self.live = live.live(self, self.video, im, self.vchannels)
         self.guide = guide.guide_widget(self, options, self.video, im, self.vchannels)
+        self.blank = Qt.QWidget(self)
 
         self.addWidget(self.live)
         self.addWidget(self.guide)
+        self.addWidget(self.blank)
 
         self.video.setParent(self)
         self.video.show()
 
+        self.resume_widget = None
         self.setCurrentWidget(self.live)
 
         self.live.clicked.connect(lambda w=self.guide: self.setCurrentWidget(w))
@@ -210,6 +213,16 @@ class atropine(Qt.QStackedWidget):
             self.fullscreen = not self.fullscreen
         elif e.key() == Qt.Qt.Key_Escape and not options.no_escape:
             Qt.qApp.exit()
+        elif e.key() == Qt.Qt.Key_Pause:
+            if not self.resume_widget:
+                self.source.set_vchannel(None)
+                self.resume_widget = self.currentWidget()
+                self.setCurrentWidget(self.blank)
+        elif self.resume_widget is not None:
+            # Any other key will resume
+            self.source.set_vchannel(self.vchannel)
+            self.setCurrentWidget(self.resume_widget)
+            self.resume_widget = None
         else:
             super(atropine, self).keyPressEvent(e)
 

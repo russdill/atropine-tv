@@ -277,7 +277,7 @@ class live(video.video_proxy):
             self.parent.set_vchannel(self.vchannels.keys()[idx])
 
     def set_vchannel(self, vchannel):
-        if self.vchannel != vchannel:
+        if self.vchannel != vchannel and vchannel != None:
             self.last = self.vchannel
             self.vchannel = vchannel
 
