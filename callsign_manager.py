@@ -17,7 +17,6 @@ import sys
 import threading
 import signal
 import shutil
-import StringIO
 import pickle
 import atomicwrites
 import os.path
@@ -70,7 +69,9 @@ class match_worker(Qt.QThread):
         self.urls = dict()
         for station, network in self.matcher.mapping.iteritems():
             if network is not None:
-                self.urls[self.thread_stations[station]] = self.thread_networks[network]
+                network = self.thread_networks[network]
+                station = self.thread_stations[station]
+                self.urls[station] = network
 
     def process_done(self):
         self.busy = False
@@ -153,7 +154,7 @@ class lyngsat_region(Qt.QNetworkAccessManager):
             self.networks = networks
             try:
                 with atomicwrites.atomic_write(self.cache_file, overwrite=True) as f:
-                    pickle.dump(self.networks, f)                    
+                    pickle.dump(self.networks, f)
             except:
                 pass
 
