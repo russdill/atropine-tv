@@ -41,7 +41,7 @@ class parse_worker(Qt.QThread):
     def start(self, fileobj, initial=False):
         self.fobj = fileobj
         self.initial = initial
-        super(parse_worker, self).start()
+        super(parse_worker, self).start(Qt.QThread.IdlePriority)
 
     def run(self):
         try:
@@ -138,7 +138,7 @@ class guide_manager(Qt.QObject):
     def parse_failed(self):
         if self.first:
             self.first = False
-            self.retrieve.start()
+            self.retrieve.start(Qt.QThread.IdlePriority)
         else:
             # Wait 5 minutes and try again
             self.timer.start(5 * 60 * 1000)

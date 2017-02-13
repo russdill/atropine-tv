@@ -61,7 +61,7 @@ class match_worker(Qt.QThread):
             self.pending = False
             self.thread_networks = self.networks
             self.thread_stations = self.stations
-            self.start()
+            self.start(Qt.QThread.IdlePriority)
 
     def run(self):
         self.matcher.set_target_stations(self.thread_networks.keys())
