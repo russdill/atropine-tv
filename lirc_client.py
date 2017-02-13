@@ -21,29 +21,33 @@ class client(Qt.QSocketNotifier):
         self.dest = dest
         sock = pylirc.init(name, config)
         pylirc.blocking(False)
-        super(client, self).__init__(sock, Qt.QSocketNotifier.Read)
+        super(client, self).__init__(sock, Qt.QSocketNotifier.Read, dest)
+        self.setEnabled(True)
         self.activated.connect(self.read_nextcode)
 
     def __del__(self):
         pylirc.exit()
 
     def read_nextcode(self):
-        for s in pylirc.nextcode():
+        next = pylirc.nextcode()
+        if next is None:
+            return
+        for s in next:
             releases = []
             for key in Qt.QKeySequence(s):
 
-                mod = key & Qt.Qt.MODIFIER_MASK
+                mod = Qt.Qt.KeyboardModifiers(key & Qt.Qt.MODIFIER_MASK)
                 key &= ~Qt.Qt.MODIFIER_MASK
 
                 if mod:
-                    text = ''
+                    text = QString('')
                 else:
                     text = Qt.QKeySequence(key).toString();
 
-                event = Qt.QKeyEvent(Qt.QEvent.KeyPress, key, mod, text)
-                Qt.QCoreApplication.postEvent(self.dest, event)
-                event = Qt.QKeyEvent(Qt.QEvent.KeyRelease, key, mod, text)
-                releases.prepend(event)
+                event = Qt.QKeyEvent(Qt.QEvent.KeyPress, key, mod, text=text)
+                Qt.QCoreApplication.sendEvent(self.dest.focusWidget(), event)
+                event = Qt.QKeyEvent(Qt.QEvent.KeyRelease, key, mod, text=text)
+                releases.insert(0, event)
 
             for event in releases:
-                Qt.QCoreApplication.postEvent(self.dest, event)
+                Qt.QCoreApplication.sendEvent(self.dest.focusWidget(), event)
