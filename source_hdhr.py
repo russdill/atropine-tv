@@ -118,6 +118,7 @@ class source_hdhr(Qt.QObject):
                 self.video.status('Tuner %s selected' % name)
 
         except RuntimeError as e:
+            e = str(e)
             self.stop(e)
             if e == 'Communication error':
                 # TCP socket died, find another tuner
@@ -136,7 +137,7 @@ class source_hdhr(Qt.QObject):
             vstatus = self.hdhr.vstatus
         except RuntimeError as e:
             # TCP socket died
-            self.stop(e)
+            self.stop(str(e))
             self.choose_hdhr()
             return
 
