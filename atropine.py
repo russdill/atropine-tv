@@ -218,6 +218,9 @@ class atropine(Qt.QStackedWidget):
                 self.source.set_vchannel(None)
                 self.resume_widget = self.currentWidget()
                 self.setCurrentWidget(self.blank)
+        elif e.key() == 0 and e.modifiers() == 0:
+            # Ignore blank keypresses
+            pass
         elif self.resume_widget is not None:
             # Any other key will resume
             self.source.set_vchannel(self.vchannel)
