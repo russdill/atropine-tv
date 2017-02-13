@@ -86,7 +86,7 @@ class lyngsat_region(Qt.QNetworkAccessManager):
 
     def __init__(self, region, cache_dir):
         super(lyngsat_region, self).__init__()
-        self.baseurl = 'http://www.lyngsat-logo.com/tvcountry/%s.html' % region
+        self.baseurl = 'https://www.lyngsat-logo.com/tvcountry/%s.html' % region
         self.cache_file = os.path.join(cache_dir, 'lyngsat-logo_%s.pickle' % region)
         self.finished.connect(self.xfer_finished)
 

@@ -19,6 +19,7 @@ import os
 import sys
 import time
 import atomicwrites
+import urlparse
 
 from PyQt4 import Qt
 
@@ -193,8 +194,14 @@ class icon_manager(Qt.QNetworkAccessManager):
     def download(self):
         url = self.running.next_url()
         if url is not None:
+            print 'download', url
+            o = urlparse.urlparse(url)
+            base = '%s://%s/' % (o.scheme, o.netloc)
             url = Qt.QUrl(url)
-            self.get(Qt.QNetworkRequest(url))
+            request = Qt.QNetworkRequest(url)
+            request.setRawHeader('User-Agent', 'Atropine-TV')
+            request.setRawHeader('Referer', base)
+            self.get(request)
         else:
             # Done with request, failed
             self.running.loaded(None, None)
