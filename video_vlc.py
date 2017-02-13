@@ -30,16 +30,11 @@ class video_vlc(video.video):
         self.events = self.player.event_manager()
         self.events.event_attach(vlc.EventType.MediaPlayerTimeChanged, self.time_changed, None)
 
-        self.events.event_attach(vlc.EventType.MediaParsedChanged, self.changed, 1)
-        self.events.event_attach(vlc.EventType.MediaMetaChanged, self.changed, 1)
-        self.events.event_attach(vlc.EventType.MediaStateChanged, self.changed, 1)
         self.events.event_attach(vlc.EventType.MediaPlayerPlaying, self.changed, 1)
         self.events.event_attach(vlc.EventType.MediaPlayerPaused, self.changed, 1)
         self.events.event_attach(vlc.EventType.MediaPlayerStopped, self.changed, 1)
         self.events.event_attach(vlc.EventType.MediaPlayerEncounteredError, self.changed, 1)
         self.events.event_attach(vlc.EventType.MediaPlayerTitleChanged, self.changed, 1)
-        self.events.event_attach(vlc.EventType.MediaDiscovererStarted, self.changed, 1)
-        self.events.event_attach(vlc.EventType.MediaDiscovererEnded, self.changed, 1)
 
         # The version control history (git log) says the following about the
         # Automatic mode (see commit f96b075043c421fb6466829a15ae0c8792b8ffe8)
