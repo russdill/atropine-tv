@@ -294,7 +294,14 @@ class live(video.video_proxy):
         elif e.key() == Qt.Qt.Key_I:
             self.info_widget.setVisible(not self.info_widget.isVisible())
         elif e.key() in self.channel_keys:
-            self.info_widget.input_add('.' if e.text() == '-' else e.text())
+            text = '.' if e.text() == '-' else e.text()
+            # EPG key and ATSC separator are often a shared key. If no channel
+            # data is currently being input, use the ATSC separator to pull
+            # up the guide.
+            if text == '.' and self.info_widget.channel_input.input == '':
+                self.clicked.emit()
+            else:
+                self.info_widget.input_add(text)
         elif e.key() in (Qt.Qt.Key_Enter, Qt.Qt.Key_Return, Qt.Qt.Key_Space):
             if self.last:
                 self.parent.set_vchannel(self.last)
