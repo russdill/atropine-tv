@@ -411,7 +411,7 @@ class guide_widget(Qt.QWidget):
         Qt.Qt.Key_8,
         Qt.Qt.Key_9,
         Qt.Qt.Key_Period,
-        Qt.Qt.Key_Underscore
+        Qt.Qt.Key_Minus
     ]
 
     def keyPressEvent(self, e):
