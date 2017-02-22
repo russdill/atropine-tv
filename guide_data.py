@@ -44,9 +44,10 @@ class Lineup(object):
         self.postalCode = postalCode
 
 class Mapping_Station(object):
-    def __init__(self, station, channel, validFrom, validTo, onAirFrom, onAirTo):
+    def __init__(self, lineup, station, channel, validFrom, validTo, onAirFrom, onAirTo):
         self.station = station
         self.channel = channel
+        self.lineup = lineup
         self.validFrom = sanitize_datetime(validFrom) # FIXME: Handle changeover
         self.validTo = sanitize_datetime(validTo)
         self.onAirFrom = sanitize_datetime(onAirFrom)
@@ -62,10 +63,10 @@ class Mapping(object):
         self.channels = collections.OrderedDict(sorted(self.channels.iteritems(), key=lambda x: float(x[0])))
         del self.all
 
-    def add(self, station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo):
+    def add(self, lineup, station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo):
         if channelMinor is not None:
             channel += '.' + channelMinor
-        st = Mapping_Station(station, channel, validFrom, validTo, onAirFrom, onAirTo)
+        st = Mapping_Station(lineup, station, channel, validFrom, validTo, onAirFrom, onAirTo)
         self.stations[station] = st
         self.channels[channel] = st
         self.all.append(st)
@@ -167,10 +168,10 @@ class guide_data(pyschedules.interfaces.ientity_trigger.IEntityTrigger, pyschedu
 
     def new_mapping(self, lineup, station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo):
         try:
-            self.mappings[lineup].add(station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo)
+            self.mappings[lineup].add(lineup, station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo)
         except:
             m = Mapping()
-            m.add(station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo)
+            m.add(lineup, station, channel, channelMinor, validFrom, validTo, onAirFrom, onAirTo)
             self.mappings[lineup] = m
 
     def new_schedule(self, program, station, time, duration, new, stereo, subtitled, hdtv, closeCaptioned, ei, tvRating, dolby, partNumber, partTotal):

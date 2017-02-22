@@ -68,10 +68,16 @@ class atropine(Qt.QStackedWidget):
         gm.new_guide.connect(self.guide_update)
 
         self.vchannel = None
+        self.source = None
         self.channel_file = options.channel_file
 
         self.video = video_vlc.video_vlc()
-        self.source = source_hdhr.source_hdhr(self.video)
+        self.sources = dict()
+        if len(options.hdhr_lineup_id):
+            for lineup, tuners in options.hdhr_lineup_id.iteritems():
+                self.sources[lineup] = source_hdhr.source_hdhr(self.video, tuners)
+        else:
+            self.sources[''] = source_hdhr.source_hdhr(self.video)
         self.live = live.live(self, self.video, im, self.vchannels)
         self.guide = guide.guide_widget(self, options, self.video, im, self.vchannels)
         self.blank = Qt.QWidget(self)
@@ -162,23 +168,49 @@ class atropine(Qt.QStackedWidget):
     def start(self):
         try:
             with open(self.channel_file, 'r') as f:
-                vchannel = f.read().strip()
-                self._set_vchannel(vchannel)
-        except:
+                ch = json.load(f)
+                self._set_vchannel(ch['vchannel'], ch['lineup'], ch['fcc_channel'])
+        except Exception as e:
             pass
 
-    def _set_vchannel(self, vchannel):
+    def _set_vchannel(self, vchannel, lineup=None, fcc_channel=None):
+        if vchannel is not None:
+            vchannel = str(vchannel)
+
         if self.vchannel == vchannel:
             return
 
+        if lineup is None or fcc_channel is None:
+            try:
+                mapping = self.vchannels[str(vchannel)]
+            except:
+                pass
+
+            if fcc_channel is None:
+                fcc_channel = mapping.station.fccChannelNumber
+            if lineup is None:
+                lineup = mapping.lineup
+
         self.vchannel = vchannel
-        self.source.set_vchannel(self.vchannel)
+
+        if len(self.sources) == 1:
+            new_source = self.sources.values()[0]
+        elif lineup in self.sources:
+            new_source = self.sources[lineup]
+        else:
+            return
+
+        if new_source != self.source and self.source:
+            self.source.set_vchannel(None)
+        self.source = new_source
+
+        self.source.set_vchannel(vchannel, fcc_channel)
         self.vchannel_changed.emit(self.vchannel)
 
         if vchannel:
             try:
                 with atomicwrites.atomic_write(self.channel_file, overwrite=True) as f:
-                    f.write(self.vchannel)
+                    json.dump({'vchannel' : self.vchannel, 'fcc_channel': fcc_channel, 'lineup': lineup}, f)
             except:
                 pass
 
@@ -189,7 +221,8 @@ class atropine(Qt.QStackedWidget):
 
     def guide_update(self, epg):
         self.vchannels.clear()
-        self.vchannels.update(epg.mappings.values()[0].channels)
+	for lineup, channel_mapping in epg.mappings.iteritems():
+            self.vchannels.update(channel_mapping.channels)
 
         vchannel = self.vchannel
 
@@ -215,7 +248,9 @@ class atropine(Qt.QStackedWidget):
             Qt.qApp.exit()
         elif e.key() == Qt.Qt.Key_Pause:
             if not self.resume_widget:
-                self.source.set_vchannel(None)
+                if self.source:
+                    self.source.set_vchannel(None)
+                    self.source = None
                 self.resume_widget = self.currentWidget()
                 self.setCurrentWidget(self.blank)
         elif e.key() == 0 and e.modifiers() == 0:
@@ -223,7 +258,8 @@ class atropine(Qt.QStackedWidget):
             pass
         elif self.resume_widget is not None:
             # Any other key will resume
-            self.source.set_vchannel(self.vchannel)
+            if self.source:
+                self.source.set_vchannel(self.vchannel)
             self.setCurrentWidget(self.resume_widget)
             self.resume_widget = None
         else:
@@ -252,8 +288,8 @@ if __name__ == '__main__':
                help='Schedules Direct user name')
     parser.add('-p', '--password', type=str, required=True,
                help='Schedules Direct password')
-    parser.add('-l', '--lineup-id', type=str,
-               help='Schedules Direct lineup ID')
+    parser.add('-l', '--hdhr-lineup-id', type=str, action='append', default=[],
+               help='Schedules Direct lineup ID of HDHomeRun ID (1222AAAA-2=NY88888:X)')
     parser.add('-s', '--sched', type=str, default=sched,
                help='Cached scheduler data')
     parser.add('-i', '--icons', type=str, default=cache,
@@ -279,6 +315,18 @@ if __name__ == '__main__':
                    help='lirc keymapping configuration file')
 
     options = parser.parse_args()
+
+    lineup_mapping = dict()
+    for mapping in options.hdhr_lineup_id:
+        try:
+            tuner, _, id = mapping.partition('=')
+            if id in lineup_mapping:
+                lineup_mapping[id].append(tuner)
+            else:
+                lineup_mapping[id] = [tuner]
+        except:
+            raise Exception('Unable to parse tuner/lineup mapping "%s"' % mapping)
+    options.hdhr_lineup_id = lineup_mapping
 
     if options.channel_region is None:
         options.channel_region = ['us']

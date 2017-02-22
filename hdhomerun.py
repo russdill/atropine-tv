@@ -243,6 +243,8 @@ class HDHomerunDeviceSelector(object):
         ptr = preferred.ptr if preferred else None
         ret = HDHomerunDeviceSelector._fn_choose_and_lock(self.ptr, ptr)
         for dev in self._devices:
+            if not dev.ptr:
+                continue
             if addressof(ret.contents) == addressof(dev.ptr.contents):
                 return dev
         return None
