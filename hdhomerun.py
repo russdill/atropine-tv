@@ -242,6 +242,8 @@ class HDHomerunDeviceSelector(object):
     def choose_and_lock(self, preferred=None):
         ptr = preferred.ptr if preferred else None
         ret = HDHomerunDeviceSelector._fn_choose_and_lock(self.ptr, ptr)
+        if not ret:
+            return None
         for dev in self._devices:
             if not dev.ptr:
                 continue
