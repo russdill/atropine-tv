@@ -14,8 +14,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import hdhomerun
+import datetime
 
 from PyQt4 import Qt
+
+def log(m):
+    return
+    print '%s: %s' % (datetime.datetime.now().strftime("%H:%M:%S.%f"), m)
 
 class source_hdhr(Qt.QObject):
     def __init__(self, video, str_dev_ids=[]):
@@ -23,6 +28,7 @@ class source_hdhr(Qt.QObject):
         super(source_hdhr, self).__init__(video)
 
         self.vchannel = None
+        self.fcc_channel = None
         self.vchannels = dict()
         self.stations = dict()
         self.sel = None
@@ -68,28 +74,41 @@ class source_hdhr(Qt.QObject):
 
     def set_vchannel(self, vchannel, fcc_channel=None):
 
+        log('set_vchannel %s (%s)' % (repr(vchannel), repr(fcc_channel)))
+
         if vchannel is None:
             # vchannel of None means stop running
             self.vchannel = None
+            self.fcc_channel = None
             self.stop()
             return
 
         was = self.vchannel
-        self.fcc_channel = fcc_channel
         self.vchannel = str(vchannel)
+
 
         if was == self.vchannel:
             # No action required
-            pass
+            log('No action required, same vchannel')
 
         else:
+            was = self.fcc_channel
+            self.fcc_channel = fcc_channel
+
             if self.hdhr and not self.checks:
-                self.program_vchannel()
+                if fcc_channel and was == fcc_channel:
+                    # If it's just a new sub-program, select it instead
+                    log('Select new subprogram')
+                    self.program_set = False
+                else:
+                    self.program_vchannel()
+
             else:
                 # We want to display something, find a tuner
                 self.choose_hdhr()
 
     def stop(self, message=None):
+        log('stop (%s)' % repr(message))
         self.video.stop()
         self.video.status(message)
         self.timer.stop()
@@ -97,32 +116,41 @@ class source_hdhr(Qt.QObject):
         if self.checks:
             self.hdhr = None
 
+    def handle_exception(self, e):
+        e = str(e)
+        self.stop(e)
+        if e == 'Communication error':
+            # TCP socket died, find another tuner
+            self.choose_hdhr()
+        elif e == 'ERROR: invalid virtual channel':
+            # illegal vchannel selected
+            self.vchannel = None
+            self.fcc_channel = None
+        else:
+            # unknown tuning error
+            self.vchannel = None
+            self.fcc_channel = None
+
     def program_vchannel(self):
-        # If it's just a new sub-program, select it instead
-        if self.vchannel is not None:
-            try:
-                self.set_program()
-                return
-            except Exception as e:
-                pass
+        log('program_vchannel')
 
         self.timer.stop()
         try:
             curr = self.hdhr.target
-            self.ip = self.hdhr.local_ip
+            ip = self.hdhr.local_ip
             name = self.hdhr.name
-
-            new_target = '%s://%s:%d' % (self.proto, self.ip, self.port)
 
             if curr == 'none':
                 curr = None
-            if curr is not None and curr != new_target:
+
+            if curr is not None and curr != self.assigned_target:
                 # Lost abritration
+                log('%s, %s' % (repr(curr), repr(self.assigned_target)))
                 self.stop('Tuner in use by another host')
                 self.choose_hdhr()
                 return
 
-            self.video.play('%s://@%s:%d' % (self.proto, self.ip, self.port))
+            was_playing = self.assigned_target
 
             try:
                 self.hdhr.set('/tuner%d/vchannel' % self.hdhr.tuner, self.vchannel)
@@ -131,11 +159,15 @@ class source_hdhr(Qt.QObject):
                 self.hdhr.set('/tuner%d/channel' % self.hdhr.tuner, self.fcc_channel)
                 self.program_set = False
 
-            was_playing = self.assigned_target
-            self.assigned_target = new_target
-            self.hdhr.target = new_target
-            self.vchannels = dict()
+            if self.program_set:
+                self.video.play('%s://@%s:%d' % (self.proto, ip, self.port))
+                self.assigned_target = '%s://%s:%d' % (self.proto, ip, self.port)
+                self.hdhr.target = self.assigned_target
+            else:
+                self.assigned_target = None
+                self.hdhr.target = ''
 
+            self.vchannels = dict()
             self.timer_cb = self.monitor
             self.timer.start(100)
             self.ticks = 0
@@ -143,17 +175,11 @@ class source_hdhr(Qt.QObject):
                 self.video.status('Tuner %s selected' % name)
 
         except RuntimeError as e:
-            e = str(e)
-            self.stop(e)
-            if e == 'Communication error':
-                # TCP socket died, find another tuner
-                self.choose_hdhr()
-            elif e == 'ERROR: invalid virtual channel':
-                # illegal vchannel selected
-                self.vchannel = None
-            else:
-                # unknown tuning error
-                self.vchannel = None
+            log('RuntimeError')
+            self.handle_exception(e)
+        except Exception as e:
+            log('Exception')
+            self.handle_exception(e)
 
     def set_vchannels(self):
         info = str(self.hdhr.streaminfo)
@@ -169,35 +195,27 @@ class source_hdhr(Qt.QObject):
                 continue
             self.vchannels[vchannel] = program
 
-    def set_program(self):
-        if self.vchannel not in self.vchannels:
-            raise Exception('Invalid ch. mapping')
-        self.video.play('%s://@%s:%d' % (self.proto, self.ip, self.port))
-
-        program = self.vchannels[self.vchannel]
-        self.hdhr.set('/tuner%d/program' % self.hdhr.tuner, program)
-
     def monitor(self):
         try:
+            ip = self.hdhr.local_ip
             target = self.hdhr.target
             status = self.hdhr.status
             vstatus = self.hdhr.vstatus
         except RuntimeError as e:
             # TCP socket died
             self.stop(str(e))
-            self.choose_hdhr()
+            try:
+                self.choose_hdhr()
+            except Exception as e:
+                log(str(e))
             return
 
         if target == 'none':
              target = None
 
-        if target is None:
-            # Streaming stopped, restart
-            self.hdhr.target = self.assigned_target
-            self.video.play('%s://@%s:%d' % (self.proto, self.ip, self.port))
-
-        elif target != self.assigned_target:
+        if target != self.assigned_target:
             # Lost arbitration
+            log('%s, %s' % (repr(target), repr(self.assigned_target)))
             self.stop('Tuner in use by another')
             self.choose_hdhr()
 
@@ -210,6 +228,46 @@ class source_hdhr(Qt.QObject):
             # No access
             self.stop('Not subscribed')
             self.vchannel = None
+            self.fcc_channel = None
+
+        elif not self.vchannels:
+            try:
+                self.set_vchannels()
+                if not self.vchannels and self.ticks > 20:
+                    self.stop('Invalid vchannel data')
+                    self.vchannel = None
+                    self.fcc_channel = None
+                else:
+                    if self.vchannels:
+                        log('vchannels: (%s)' % repr(self.vchannels))
+                    # Ok, keep monitoring
+                    self.timer.start(100)
+            except Exception as e:
+                self.handle_exception(e)
+
+        elif not self.program_set:
+
+            try:
+                if self.vchannel not in self.vchannels:
+                    self.stop('Invalid ch. mapping')
+                    self.vchannel = None
+                    self.fcc_channel = None
+
+                else:
+                    program = self.vchannels[self.vchannel]
+                    log('setting program %s' % repr(program))
+                    self.video.play('%s://@%s:%d' % (self.proto, ip, self.port))
+                    self.hdhr.set('/tuner%d/program' % self.hdhr.tuner, program)
+                    self.assigned_target = '%s://%s:%d' % (self.proto, ip, self.port)
+                    self.hdhr.target = self.assigned_target
+
+                    # Ok, keep monitoring
+                    self.program_set = True
+                    self.timer.start(100)
+
+            except Exception as e:
+                self.handle_exception(e)
+
 
         elif not status['pps'] and self.ticks > 20:
             # Streaming has stopped, arbitration lost?
@@ -217,25 +275,13 @@ class source_hdhr(Qt.QObject):
             self.choose_hdhr()
 
         else:
-            try:
-                if not self.vchannels:
-                    self.set_vchannels()
-                    if not self.vchannels and self.ticks > 20:
-                        raise Exception('Invalid vchannel')
-                elif not self.program_set:
-                    self.set_program()
-                    self.program_set = True
-            except Exception as e:
-                self.stop(str(e))
-                self.choose_hdhr()
-            self.program_set = True
-
             # Ok, keep monitoring
             self.timer.start(100)
 
         self.ticks += 1
 
     def choose_hdhr(self):
+        log('choose_hdhr')
         self.assigned_target = None
 
         if self.sel is None:
@@ -274,9 +320,11 @@ class source_hdhr(Qt.QObject):
         else:
            remaining = 0
 
+        log('No suitible tuner found, try again in %.2fs' % (remaining / 1000.0))
         self.timer.start(remaining)
 
     def check_hdhr(self):
+        log('check_hdhr')
         try:
             status = self.hdhr.status
         except:
