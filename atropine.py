@@ -43,6 +43,12 @@ try:
 except:
     has_lirc_client = False
 
+try:
+    import setproctitle
+    setproctitle.setproctitle('atropine-tv')
+except:
+    pass
+
 import faulthandler
 faulthandler.enable()
 
