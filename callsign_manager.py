@@ -69,9 +69,12 @@ class match_worker(Qt.QThread):
         self.urls = dict()
         for station, network in self.matcher.mapping.iteritems():
             if network is not None:
-                network = self.thread_networks[network]
-                station = self.thread_stations[station]
-                self.urls[station] = network
+                try:
+                    network = self.thread_networks[network]
+                    station = self.thread_stations[station]
+                    self.urls[station] = network
+                except:
+                    pass
 
     def process_done(self):
         self.busy = False
