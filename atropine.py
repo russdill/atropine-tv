@@ -101,6 +101,7 @@ class atropine(Qt.QStackedWidget):
         self.live.clicked.connect(lambda w=self.guide: self.setCurrentWidget(w))
         self.guide.done.connect(lambda w=self.live: self.setCurrentWidget(w))
 
+        self.paused_start = options.paused
         Qt.QTimer.singleShot(0, self.start)
 
         ss = """
@@ -178,6 +179,13 @@ class atropine(Qt.QStackedWidget):
                 self._set_vchannel(ch['vchannel'], ch['lineup'], ch['fcc_channel'])
         except Exception as e:
             pass
+
+        if self.paused_start:
+            if self.source:
+                self.source.set_vchannel(None)
+                self.source = None
+            self.resume_widget = self.currentWidget()
+            self.setCurrentWidget(self.blank)
 
     def _set_vchannel(self, vchannel, lineup=None, fcc_channel=None):
         if vchannel is not None:
@@ -316,6 +324,8 @@ if __name__ == '__main__':
                help='LyngSat Logo region (can be specified multiple times)')
     parser.add('--no-escape', action='store_true', default=False,
                help='Do not exit Atropine when escape is pressed')
+    parser.add('--paused', action='store_true', default=False,
+               help='Start in paused mode')
     if has_lirc_client:
         parser.add('--lircrc', type=str,
                    help='lirc keymapping configuration file')

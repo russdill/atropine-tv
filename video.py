@@ -61,7 +61,10 @@ class video_proxy(Qt.QLabel):
     def hideEvent(self, e):
         super(video_proxy, self).hideEvent(e)
         if not e.spontaneous():
-            self.master.clicked.disconnect(self.clicked)
+            try:
+                self.master.clicked.disconnect(self.clicked)
+            except:
+                pass
             self.master.lower()
 
 class video(Qt.QWidget):
