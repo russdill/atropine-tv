@@ -75,6 +75,7 @@ class atropine(Qt.QStackedWidget):
 
         self.vchannel = None
         self.source = None
+        self.resume_source = None
         self.channel_file = options.channel_file
 
         self.video = video_vlc.video_vlc()
@@ -181,6 +182,7 @@ class atropine(Qt.QStackedWidget):
             pass
 
         if self.paused_start:
+            self.resume_source = self.source
             if self.source:
                 self.source.set_vchannel(None)
                 self.source = None
@@ -262,6 +264,7 @@ class atropine(Qt.QStackedWidget):
             Qt.qApp.exit()
         elif e.key() == Qt.Qt.Key_Pause:
             if not self.resume_widget:
+                self.resume_source = self.source
                 if self.source:
                     self.source.set_vchannel(None)
                     self.source = None
@@ -272,6 +275,8 @@ class atropine(Qt.QStackedWidget):
             pass
         elif self.resume_widget is not None:
             # Any other key will resume
+            self.source = self.resume_source
+            self.resume_source = None
             if self.source:
                 self.source.set_vchannel(self.vchannel)
             self.setCurrentWidget(self.resume_widget)
