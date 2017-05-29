@@ -212,6 +212,8 @@ class live(video.video_proxy):
     def __init__(self, parent, video_widget=None, icon_manager=None, vchannels=None):
         self.vchannel = parent.vchannel
         self.last = None
+        self.spu_timer = Qt.QTimer()
+        self.spu_timer.timeout.connect(self.spu_timeout)
 
         super(live, self).__init__(parent, video_widget)
 
@@ -227,6 +229,7 @@ class live(video.video_proxy):
         self.setMinimumWidth(self.info_widget.height * 2 * 16 / 9)
 
         self.osd = osd_widget(parent)
+        self.spu_current_idx = -1
 
         parent.moved.connect(self.moved)
 
@@ -280,11 +283,22 @@ class live(video.video_proxy):
         if self.vchannel != vchannel and vchannel != None:
             self.last = self.vchannel
             self.vchannel = vchannel
+            self.spu_timer.start(500)
+        else:
+            self.spu_timer.stop()
 
     def new_guide(self):
         if self.last not in self.vchannels.keys():
             self.last = None
         self.info_widget.new_guide()
+
+    def spu_timeout(self):
+        descs = self.master.player.video_get_spu_description()
+        if not descs:
+            return
+        if self.spu_current_idx != -1 and self.spu_current_idx < len(descs):
+            new_spu = descs[self.spu_current_idx]
+            self.master.set_spu(new_spu[0])
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Qt.Key_Up or e.key() == Qt.Qt.Key_PageUp:
@@ -322,6 +336,7 @@ class live(video.video_proxy):
             new_spu = descs[current_idx]
             self.master.set_spu(new_spu[0])
             self.osd.display('%s (%d/%d)' % (new_spu[1], current_idx, len(descs) - 1))
+            self.spu_current_idx = current_idx
         else:
             super(live, self).keyPressEvent(e)
 
