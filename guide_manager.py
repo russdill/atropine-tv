@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import guide_data
+import qboottimer
 
 import sys
 import pyschedules.retrieve
@@ -90,7 +91,7 @@ class guide_manager(Qt.QObject):
 
         self.minimum_sched = datetime.timedelta(hours=8)
         self.minimum_fresh = datetime.timedelta(days=1)
-        fetch_duration = datetime.timedelta(days=1)
+        fetch_duration = datetime.timedelta(days=2)
 
         self.filename = options.sched
         self.parse = parse_worker(self.filename)
@@ -102,7 +103,7 @@ class guide_manager(Qt.QObject):
         self.retrieve.done.connect(self.parse.start)
         self.retrieve.failed.connect(self.retrieve_failed)
 
-        self.timer = Qt.QTimer()
+        self.timer = qboottimer.QBootTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.retrieve.start)
 
