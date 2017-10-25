@@ -19,6 +19,7 @@ import datetime
 import dateutil.tz
 import effects
 import tv_icon
+import qboottimer
 
 localtz = dateutil.tz.tzlocal()
 
@@ -251,7 +252,7 @@ class now_widget(Qt.QLabel):
         super(now_widget, self).__init__()
 
         self.setFocusPolicy(Qt.Qt.NoFocus)
-        self.timer = Qt.QTimer()
+        self.timer = qboottimer.QBootTimer()
         self.timer.timeout.connect(self.update_time)
         self.update_time()
 
