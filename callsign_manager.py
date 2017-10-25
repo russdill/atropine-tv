@@ -24,6 +24,7 @@ import logo_matcher
 
 import datetime
 import dateutil.tz
+import multiprocessing
 
 from urlparse import urljoin
 import bs4
@@ -31,6 +32,21 @@ import bs4
 from PyQt4 import Qt
 
 localtz = dateutil.tz.tzlocal()
+#multiprocessing.set_start_method('spawn')
+
+def process_run(matcher, networks, stations, result):
+    matcher.set_target_stations(networks.keys())
+    matcher.generate_mapping(stations.keys())
+    urls = {}
+    for station, network in matcher.mapping.iteritems():
+        if network is not None:
+            try:
+                network = networks[network]
+                station = stations[station]
+                urls[station] = network
+            except:
+                pass
+    result.put(urls)
 
 class match_worker(Qt.QThread):
     done = Qt.pyqtSignal(object)
@@ -64,17 +80,12 @@ class match_worker(Qt.QThread):
             self.start(Qt.QThread.IdlePriority)
 
     def run(self):
-        self.matcher.set_target_stations(self.thread_networks.keys())
-        self.matcher.generate_mapping(self.thread_stations.keys())
-        self.urls = dict()
-        for station, network in self.matcher.mapping.iteritems():
-            if network is not None:
-                try:
-                    network = self.thread_networks[network]
-                    station = self.thread_stations[station]
-                    self.urls[station] = network
-                except:
-                    pass
+        result = multiprocessing.Queue()
+        args = (self.matcher, self.thread_networks, self.thread_stations, result)
+        p = multiprocessing.Process(target=process_run, args=args)
+        p.start()
+        self.urls = result.get()
+        p.join()
 
     def process_done(self):
         self.busy = False

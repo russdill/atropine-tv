@@ -116,7 +116,7 @@ class matcher(object):
         for key, val in self.swap_tokens.iteritems():
             rev[val[1]] = (val[0], key)
         self.swap_tokens.update(rev)
-    
+
     def find(self, td, tokens, depth=0, prefix=None, prefix_count=0, partial=False, generated=False, combined=False):
         best = best_tracker()
         if depth > 100:

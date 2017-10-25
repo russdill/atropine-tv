@@ -26,10 +26,15 @@ import StringIO
 import datetime
 import dateutil.tz
 import atomicwrites
+import multiprocessing
 
 from PyQt4 import Qt
 
 localtz = dateutil.tz.tzlocal()
+#multiprocessing.set_start_method('spawn')
+
+def process_run(tmp, result):
+    result.put(guide_data.guide_data(tmp))
 
 class parse_worker(Qt.QThread):
     done = Qt.pyqtSignal(guide_data.guide_data)
@@ -49,7 +54,11 @@ class parse_worker(Qt.QThread):
             tmp = StringIO.StringIO()
             shutil.copyfileobj(self.fobj, tmp)
             tmp.seek(0)
-            d = guide_data.guide_data(tmp)
+            result = multiprocessing.Queue()
+            p = multiprocessing.Process(target=process_run, args=(tmp, result))
+            p.start()
+            d = result.get()
+            p.join()
             self.done.emit(d)
             if not self.initial:
                 tmp.seek(0)
