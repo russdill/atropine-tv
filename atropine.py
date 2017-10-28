@@ -65,6 +65,7 @@ class atropine(Qt.QStackedWidget):
         self.vchannels = collections.OrderedDict()
         self.fullscreen = options.fullscreen
         self.no_escape = options.no_escape
+        self.max_brightness = options.max_brightness
 
         gm = guide_manager.guide_manager(self, options)
         cm = callsign_manager.callsign_manager(self, options)
@@ -169,7 +170,11 @@ class atropine(Qt.QStackedWidget):
         cat_file = os.path.join(__location__, 'categories.xml')
         cc = categories.category_colors(cat_file)
         for key, value in cc.iteritems():
-            ss += 'QLabel[category="%s"] { background-color: rgb%s; }\n' % (key, str(value))
+            c = Qt.QColor(*value)
+            c = Qt.QColor.fromHsvF(c.hsvHueF(), c.hsvSaturationF(), min(c.valueF(), self.max_brightness))
+            #c = Qt.QColor.fromHslF(c.hslHueF(), c.hslSaturationF(), min(c.lightnessF(), self.max_brightness))
+            c = str(c.getRgb()[0:3])
+            ss += 'QLabel[category="%s"] { background-color: rgb%s; }\n' % (key, c)
 
         self.setStyleSheet(ss)
 
@@ -331,6 +336,8 @@ if __name__ == '__main__':
                help='Do not exit Atropine when escape is pressed')
     parser.add('--paused', action='store_true', default=False,
                help='Start in paused mode')
+    parser.add('--max-brightness', type=float, default=0.75,
+               help='Maximum category color brightness (0.0-1.0)')
     if has_lirc_client:
         parser.add('--lircrc', type=str,
                    help='lirc keymapping configuration file')
