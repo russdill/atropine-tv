@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from xml import sax
-import webcolors
+import x11_colors
 
 class category_colors(sax.ContentHandler, sax.ErrorHandler, dict):
     def __init__(self, filename='categories.xml'):
@@ -25,7 +25,7 @@ class category_colors(sax.ContentHandler, sax.ErrorHandler, dict):
 
     def startElement(self, name, attrs):
         if name == 'catcolor':
-            self[attrs.get('category')] = webcolors.html5_parse_legacy_color(attrs.get('color'))
+            self[attrs.get('category')] = x11_colors.map(attrs.get('color'))
 
     def characters(self, ch):
         pass
