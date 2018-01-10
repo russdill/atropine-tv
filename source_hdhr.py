@@ -57,7 +57,7 @@ class source_hdhr(Qt.QObject):
                 raise Exception('Invalid HDHomeRun id "%s"' % id)
 
             try:
-                tuner = int(x) if len(tuner) else None
+                tuner = int(tuner) if len(tuner) else None
             except:
                 raise Exception('Unable to parse tuner "%d"', tuners)
             self.dev_ids.append((id, tuner))
