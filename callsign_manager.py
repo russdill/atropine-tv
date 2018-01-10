@@ -126,7 +126,7 @@ class lyngsat_region(Qt.QNetworkAccessManager):
 
         if reply.error() != Qt.QNetworkReply.NoError:
             # Retry in an hour
-            Qt.QTimer.singleShot(retry_delay_sec * 1000, self.retrieve_start)
+            Qt.QTimer.singleShot(self.retry_delay_sec * 1000, self.retrieve_start)
             return
 
         redirect = reply.attribute(Qt.QNetworkRequest.RedirectionTargetAttribute).toUrl()
