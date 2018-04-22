@@ -357,7 +357,7 @@ if __name__ == '__main__':
     options.hdhr_lineup_id = lineup_mapping
 
     if options.channel_region is None:
-        options.channel_region = ['us']
+        options.channel_region = ['United-States']
 
     Qt.QCoreApplication.setAttribute(Qt.Qt.AA_X11InitThreads)
 
