@@ -26,7 +26,7 @@ from ctypes import *
 import struct
 import socket
 
-_hdhomerun = CDLL("libhdhomerun.so.2")
+_hdhomerun = CDLL("libhdhomerun.so")
 
 try:
     # 20160130 changes the type of bool_t which changes the offsets of
