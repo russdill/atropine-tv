@@ -1,1 +1,1 @@
-vlc-python/generated/vlc.py
+vlc-python/generated/3.0/vlc.py
